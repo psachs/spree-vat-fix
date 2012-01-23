@@ -6,7 +6,7 @@ end
 
 Calculator::Vat.class_eval do
   # list the vat rates for the default country
-  def self.default_rates(user_ip)
+  def self.default_rates(user_ip = nil)
     # try to determine user country by geolocation
     country = Country.find_by_iso(GeoLocation.find(user_ip)[:country_code]) unless user_ip.nil?
     origin = country || Country.find(Spree::Config[:default_country_id])
@@ -16,7 +16,7 @@ Calculator::Vat.class_eval do
     calcs.collect { |calc| calc.calculable }
   end
 
-  def self.rates_for_order(order, user_ip)
+  def self.rates_for_order(order, user_ip = nil)
     return default_rates(user_ip) if order.nil? || order.ship_address.nil? || order.ship_address.country.nil?
     calcs = Calculator::Vat.find(:all, :include => {:calculable => :zone}).select {
       |vat| vat.calculable.zone.country_list.include?(order.ship_address.country)
