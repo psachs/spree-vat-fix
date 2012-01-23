@@ -1,4 +1,4 @@
-TaxRate.class_eval do 
+TaxRate.class_eval do
   def is_default?
     self.tax_category.is_default
   end
@@ -28,7 +28,7 @@ Calculator::Vat.class_eval do
   end
 
   # Called by BaseHelper.order_price to determine the tax, before address is known. While off course possibly incorrct,
-  # default assumtion leads to correct value in 90 ish % of cases or more.  
+  # default assumtion leads to correct value in 90 ish % of cases or more.
   def self.calculate_tax(order)
     rates = default_rates
     tax = 0
@@ -44,10 +44,10 @@ Calculator::Vat.class_eval do
     return 0 if vat_rates.nil?  # uups, configuration error
     product = product_or_variant.is_a?(Product) ? product_or_variant : product_or_variant.product
     return 0 unless tax_category = product.tax_category #TODOD Should check default category first
-    # TODO finds first (or any?) rate. 
+    # TODO finds first (or any?) rate.
     return 0 unless rate = vat_rates.find { | vat_rate | vat_rate.tax_category_id == tax_category.id }
     puts "CALCULATE TAX ON #{product_or_variant.price}  RATE#{ rate.amount}"
-    (product_or_variant.price * rate.amount).round(2, BigDecimal::ROUND_HALF_UP)
+    BigDecimal((product_or_variant.price * rate.amount).to_s).round(2, BigDecimal::ROUND_HALF_UP)
   end
 
   # computes vat for line_items associated with order, and tax rate and now coupon discounts are taken into account in tax calcs
@@ -70,7 +70,7 @@ Calculator::Vat.class_eval do
       else
         next unless is_default? # and apply to products with no category, if this is the default rate
         #TODO: though it would be a user error, there may be several rates for the default category
-        #      and these would be added up by this. 
+        #      and these would be added up by this.
       end
       next unless line_item.product.tax_category.tax_rates.include? rate
       puts "COMPUTE for #{line_item.price} is #{ line_item.price * rate.amount} RATE IS #{rate.amount}" if debug
