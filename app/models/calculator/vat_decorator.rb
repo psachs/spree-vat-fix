@@ -5,32 +5,29 @@ TaxRate.class_eval do
 end
 
 Calculator::Vat.class_eval do
-
-
   # list the vat rates for the default country
   def self.default_rates
-    origin = Country.find(Spree::Config[:default_country_id])
+    # try to determine user country by geolocation
+    country = Country.find_by_iso(GeoLocation.find(request.ip)[:country_code])
+    origin = country || Country.find(Spree::Config[:default_country_id])
     calcs = Calculator::Vat.find(:all, :include => {:calculable => :zone}).select {
       |vat| vat.calculable.zone.country_list.include?(origin)
     }
-    puts "DEFAULT RATES #{calcs.collect { |calc| calc.calculable.amount }.join(' ')}"
     calcs.collect { |calc| calc.calculable }
   end
 
-  # list the vat rates for the default country
-  def self.default_rates
-    origin = Country.find(Spree::Config[:default_country_id])
+  def self.rates_for_order(order)
+    return default_rates if order.nil? || order.ship_address.nil? || order.ship_address.country.nil?
     calcs = Calculator::Vat.find(:all, :include => {:calculable => :zone}).select {
-      |vat| vat.calculable.zone.country_list.include?(origin)
+      |vat| vat.calculable.zone.country_list.include?(order.ship_address.country)
     }
-    #puts "DEFAULT RATES #{calcs.collect { |calc| calc.calculable.amount }.join(' ')}"
     calcs.collect { |calc| calc.calculable }
   end
 
   # Called by BaseHelper.order_price to determine the tax, before address is known. While off course possibly incorrct,
   # default assumtion leads to correct value in 90 ish % of cases or more.
   def self.calculate_tax(order)
-    rates = default_rates
+    rates = rates_for_order(order)
     tax = 0
     order.line_items.each do |line_item|
       variant = line_item.variant
@@ -52,10 +49,9 @@ Calculator::Vat.class_eval do
 
   # computes vat for line_items associated with order, and tax rate and now coupon discounts are taken into account in tax calcs
   def compute(order)
-    debug = true
     rate = self.calculable
-    puts "#{rate.id} RATE IS #{rate.amount}" if debug
     tax = 0
+    return 0 unless rate.zone.country_list.include? order.ship_address.country
     if rate.tax_category.is_default and !Spree::Config[ :show_price_inc_vat]
       order.adjustments.each do | adjust |
         next if adjust.originator_type == "TaxRate"
@@ -73,7 +69,6 @@ Calculator::Vat.class_eval do
         #      and these would be added up by this.
       end
       next unless line_item.product.tax_category.tax_rates.include? rate
-      puts "COMPUTE for #{line_item.price} is #{ line_item.price * rate.amount} RATE IS #{rate.amount}" if debug
       tax += BigDecimal((line_item.price * rate.amount).to_s).round(2, BigDecimal::ROUND_HALF_UP) * line_item.quantity
     end
     tax
