@@ -52,7 +52,8 @@ Calculator::Vat.class_eval do
   def compute(order)
     rate = self.calculable
     tax = 0
-    return 0 unless !(order.ship_address.nil? && order.ship_address.country.nil?) && rate.zone.country_list.include?(order.ship_address.country)
+    return 0 unless order.ship_address.nil? || order.ship_address.country.nil? || !(rate.zone.country_list.include?(order.ship_address.country))
+
     if rate.tax_category.is_default and !Spree::Config[ :show_price_inc_vat]
       order.adjustments.each do | adjust |
         next if adjust.originator_type == "TaxRate"
