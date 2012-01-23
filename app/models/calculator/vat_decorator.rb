@@ -74,7 +74,7 @@ Calculator::Vat.class_eval do
       end
       next unless line_item.product.tax_category.tax_rates.include? rate
       puts "COMPUTE for #{line_item.price} is #{ line_item.price * rate.amount} RATE IS #{rate.amount}" if debug
-      tax += (line_item.price * rate.amount).round(2, BigDecimal::ROUND_HALF_UP) * line_item.quantity
+      tax += BigDecimal((line_item.price * rate.amount).to_s).round(2, BigDecimal::ROUND_HALF_UP) * line_item.quantity
     end
     tax
   end
