@@ -40,7 +40,8 @@ Calculator::Vat.class_eval do
   def self.calculate_tax_on(product_or_variant , vat_rates = default_rates )
     return 0 if vat_rates.nil?  # uups, configuration error
     product = product_or_variant.is_a?(Product) ? product_or_variant : product_or_variant.product
-    return 0 unless tax_category = product.tax_category #TODOD Should check default category first
+    return 0 unless product.tax_category_id?
+    tax_category = product.tax_category
     # TODO finds first (or any?) rate.
     return 0 unless rate = vat_rates.find { | vat_rate | vat_rate.tax_category_id == tax_category.id }
     puts "CALCULATE TAX ON #{product_or_variant.price}  RATE#{ rate.amount}"
@@ -61,13 +62,9 @@ Calculator::Vat.class_eval do
       end
     end
     order.line_items.each do  | line_item|
-      if line_item.product.tax_category  #only apply this calculator to products assigned this rates category
-        next unless line_item.product.tax_category == rate.tax_category
-      else
-        next unless is_default? # and apply to products with no category, if this is the default rate
-        #TODO: though it would be a user error, there may be several rates for the default category
-        #      and these would be added up by this.
-      end
+      # do not apply tax_rate if product has no tax_category
+      next unless line_item.product.tax_category_id?
+      next unless line_item.product.tax_category == rate.tax_category
       next unless line_item.product.tax_category.tax_rates.include? rate
       tax += BigDecimal((line_item.price * rate.amount).to_s).round(2, BigDecimal::ROUND_HALF_UP) * line_item.quantity
     end
