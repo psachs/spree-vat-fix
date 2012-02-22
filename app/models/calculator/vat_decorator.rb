@@ -6,18 +6,19 @@ end
 
 Calculator::Vat.class_eval do
   # list the vat rates for the default country
-  def self.default_rates(user_ip = nil)
+  def self.default_rates(user_ip = nil, country_code = nil)
     # try to determine user country by geolocation
-    country = Country.find_by_iso(GeoLocation.find(user_ip)[:country_code]) unless user_ip.nil?
-    origin = country || Country.find(Spree::Config[:default_country_id])
+    country = Country.find_by_iso(country_code.upcase) unless country_code.nil?
+    country ||= Country.find_by_iso(GeoLocation.find(user_ip)[:country_code]) unless user_ip.nil?
+    origin ||= Country.find(Spree::Config[:default_country_id])
     calcs = Calculator::Vat.find(:all, :include => {:calculable => :zone}).select {
       |vat| vat.calculable.zone.country_list.include?(origin)
     }
     calcs.collect { |calc| calc.calculable }
   end
 
-  def self.rates_for_order(order, user_ip = nil)
-    return default_rates(user_ip) if order.nil? || order.ship_address.nil? || order.ship_address.country.nil?
+  def self.rates_for_order(order, user_ip = nil, country_code = nil)
+    return default_rates(user_ip, country_code) if order.nil? || order.ship_address.nil? || order.ship_address.country.nil?
     calcs = Calculator::Vat.find(:all, :include => {:calculable => :zone}).select {
       |vat| vat.calculable.zone.country_list.include?(order.ship_address.country)
     }
@@ -26,8 +27,8 @@ Calculator::Vat.class_eval do
 
   # Called by BaseHelper.order_price to determine the tax, before address is known. While off course possibly incorrct,
   # default assumtion leads to correct value in 90 ish % of cases or more.
-  def self.calculate_tax(order, user_ip = nil)
-    rates = rates_for_order(order, user_ip)
+  def self.calculate_tax(order, user_ip = nil, country_code = nil)
+    rates = rates_for_order(order, user_ip, country_code)
     tax = 0
     order.line_items.each do |line_item|
       variant = line_item.variant
