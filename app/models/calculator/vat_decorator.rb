@@ -10,7 +10,7 @@ Calculator::Vat.class_eval do
     # try to determine user country by geolocation
     country = Country.find_by_iso(country_code.upcase) unless country_code.nil?
     country ||= Country.find_by_iso(GeoLocation.find(user_ip)[:country_code]) unless user_ip.nil?
-    origin ||= Country.find(Spree::Config[:default_country_id])
+    origin = country || Country.find(Spree::Config[:default_country_id])
     calcs = Calculator::Vat.find(:all, :include => {:calculable => :zone}).select {
       |vat| vat.calculable.zone.country_list.include?(origin)
     }
