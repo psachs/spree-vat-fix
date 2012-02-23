@@ -32,7 +32,7 @@ Calculator::Vat.class_eval do
     tax = 0
     order.line_items.each do |line_item|
       variant = line_item.variant
-      tax += calculate_tax_on(variant , rates)
+      tax += (calculate_tax_on(variant , rates) * line_item.quantity)
     end
     tax
   end
